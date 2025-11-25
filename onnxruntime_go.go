@@ -12,9 +12,7 @@ import (
 
 // #cgo CFLAGS: -O2 -g
 //
-// #cgo nocallback SetAPIFromBase
 // #cgo nocallback GetVersion
-// #cgo nocallback SetCoreMLProviderFunctionPointer
 // #cgo nocallback ReleaseOrtStatus
 // #cgo nocallback CreateOrtEnv
 // #cgo nocallback UpdateEnvWithCustomLogLevel
