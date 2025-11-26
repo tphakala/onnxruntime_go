@@ -86,6 +86,12 @@ OrtStatus *SetSessionGraphOptimizationLevel(OrtSessionOptions *o, int level);
 // Wraps ort_api->SetSessionLogSeverityLevel
 OrtStatus *SetSessionLogSeverityLevel(OrtSessionOptions *o, int level);
 
+// Wraps ort_api->EnableProfiling
+OrtStatus *EnableProfiling(OrtSessionOptions *o, const char *profile_file_prefix);
+
+// Wraps ort_api->DisableProfiling
+OrtStatus *DisableProfiling(OrtSessionOptions *o);
+
 // Wraps ort_api->AddSessionConfigEntry
 OrtStatus *AddSessionConfigEntry(OrtSessionOptions *o, char *key, char *value);
 
@@ -181,6 +187,9 @@ OrtStatus *RunSessionWithBinding(OrtSession *session, OrtIoBinding *b);
 
 // Wraps ort_api->ReleaseSession
 void ReleaseOrtSession(OrtSession *session);
+
+// Wraps ort_api->SessionEndProfiling. Uses the default allocator.
+OrtStatus *SessionEndProfiling(OrtSession *session, char **out);
 
 // Wraps ort_api->CreateIoBinding
 OrtStatus *CreateIoBinding(OrtSession *session, OrtIoBinding **out);

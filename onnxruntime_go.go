@@ -27,6 +27,8 @@ import (
 // #cgo nocallback SetSessionExecutionMode
 // #cgo nocallback SetSessionGraphOptimizationLevel
 // #cgo nocallback SetSessionLogSeverityLevel
+// #cgo nocallback EnableProfiling
+// #cgo nocallback DisableProfiling
 // #cgo nocallback AddSessionConfigEntry
 // #cgo nocallback HasSessionConfigEntry
 // #cgo nocallback GetSessionConfigEntry
@@ -52,6 +54,7 @@ import (
 // #cgo nocallback RunOrtSession
 // #cgo nocallback RunSessionWithBinding
 // #cgo nocallback ReleaseOrtSession
+// #cgo nocallback SessionEndProfiling
 // #cgo nocallback CreateIoBinding
 // #cgo nocallback ReleaseIoBinding
 // #cgo nocallback BindInput
@@ -107,6 +110,8 @@ import (
 // #cgo noescape SetSessionExecutionMode
 // #cgo noescape SetSessionGraphOptimizationLevel
 // #cgo noescape SetSessionLogSeverityLevel
+// #cgo noescape EnableProfiling
+// #cgo noescape DisableProfiling
 // #cgo noescape AddSessionConfigEntry
 // #cgo noescape HasSessionConfigEntry
 // #cgo noescape GetSessionConfigEntry
@@ -131,6 +136,7 @@ import (
 // #cgo noescape RunOrtSession
 // #cgo noescape RunSessionWithBinding
 // #cgo noescape ReleaseOrtSession
+// #cgo noescape SessionEndProfiling
 // #cgo noescape CreateIoBinding
 // #cgo noescape ReleaseIoBinding
 // #cgo noescape BindInput
@@ -1494,6 +1500,29 @@ func (o *SessionOptions) SetLogSeverityLevel(level LoggingLevel) error {
 	return nil
 }
 
+// EnableProfiling enables profiling for the session. The profileFilePrefix
+// specifies the prefix of the profile file. Profile data will be written to a
+// file named <profileFilePrefix>_<timestamp>.json. Call EndProfiling on the
+// session to stop profiling and get the profile file path.
+func (o *SessionOptions) EnableProfiling(profileFilePrefix string) error {
+	cPrefix := C.CString(profileFilePrefix)
+	defer C.free(unsafe.Pointer(cPrefix))
+	status := C.EnableProfiling(o.o, cPrefix)
+	if status != nil {
+		return statusToError(status)
+	}
+	return nil
+}
+
+// DisableProfiling disables profiling for the session.
+func (o *SessionOptions) DisableProfiling() error {
+	status := C.DisableProfiling(o.o)
+	if status != nil {
+		return statusToError(status)
+	}
+	return nil
+}
+
 // Returns true, nil if the SessionOptions has a configuration entry with the
 // given key. Returns false if the key isn't defined. Returns an error if
 // onnxruntime indicates an error, though it isn't clear from the docs what
@@ -2130,6 +2159,20 @@ func (s *AdvancedSession) Run() error {
 	return nil
 }
 
+// EndProfiling ends profiling and returns the path to the profile file.
+// Profiling must have been enabled via SessionOptions.EnableProfiling before
+// creating the session.
+func (s *AdvancedSession) EndProfiling() (string, error) {
+	var cProfileFile *C.char
+	status := C.SessionEndProfiling(s.ortSession, &cProfileFile)
+	if status != nil {
+		return "", statusToError(status)
+	}
+	profileFile := C.GoString(cProfileFile)
+	C.FreeWithDefaultORTAllocator(unsafe.Pointer(cProfileFile))
+	return profileFile, nil
+}
+
 // Wraps the OrtIoBinding instance. Must be created using
 // DynamicAdvancedSession's CreateIoBinding method and Destroy'ed when no
 // longer needed. (Only DynamicAdvancedSession is supported for this, since
@@ -2670,6 +2713,13 @@ func (s *DynamicAdvancedSession) RunWithBinding(b *IoBinding) error {
 // needed.
 func (s *DynamicAdvancedSession) GetModelMetadata() (*ModelMetadata, error) {
 	return s.s.GetModelMetadata()
+}
+
+// EndProfiling ends profiling and returns the path to the profile file.
+// Profiling must have been enabled via SessionOptions.EnableProfiling before
+// creating the session.
+func (s *DynamicAdvancedSession) EndProfiling() (string, error) {
+	return s.s.EndProfiling()
 }
 
 // Holds information about the name, shape, and type of an input or output to a

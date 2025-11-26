@@ -106,6 +106,14 @@ OrtStatus *SetSessionLogSeverityLevel(OrtSessionOptions *o, int level) {
   return ort_api->SetSessionLogSeverityLevel(o, level);
 }
 
+OrtStatus *EnableProfiling(OrtSessionOptions *o, const char *profile_file_prefix) {
+  return ort_api->EnableProfiling(o, profile_file_prefix);
+}
+
+OrtStatus *DisableProfiling(OrtSessionOptions *o) {
+  return ort_api->DisableProfiling(o);
+}
+
 OrtStatus *AddSessionConfigEntry(OrtSessionOptions *o, char *key,
     char *value) {
   return ort_api->AddSessionConfigEntry(o, key, value);
@@ -274,6 +282,14 @@ OrtStatus *RunSessionWithBinding(OrtSession *session, OrtIoBinding *b) {
 
 void ReleaseOrtSession(OrtSession *session) {
   ort_api->ReleaseSession(session);
+}
+
+OrtStatus *SessionEndProfiling(OrtSession *session, char **out) {
+  OrtAllocator *allocator = NULL;
+  OrtStatus *status = NULL;
+  status = ort_api->GetAllocatorWithDefaultOptions(&allocator);
+  if (status) return status;
+  return ort_api->SessionEndProfiling(session, allocator, out);
 }
 
 OrtStatus *CreateIoBinding(OrtSession *session, OrtIoBinding **out) {
