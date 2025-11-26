@@ -1,4 +1,20 @@
+// Detect actual Windows platform (the header undefines _WIN32 temporarily,
+// but we need to know if we're really on Windows for string conversions)
+#if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
+#define ORT_WRAPPER_WINDOWS 1
+#endif
+
 #include "onnxruntime_wrapper.h"
+
+#ifdef ORT_WRAPPER_WINDOWS
+// Declare only the Windows API functions we need to avoid conflicts
+// (windows.h's GetVersion conflicts with our GetVersion)
+#define CP_UTF8 65001
+__declspec(dllimport) int __stdcall MultiByteToWideChar(
+    unsigned int CodePage, unsigned long dwFlags,
+    const char* lpMultiByteStr, int cbMultiByte,
+    wchar_t* lpWideCharStr, int cchWideChar);
+#endif
 
 static const OrtApi *ort_api = NULL;
 static const char *ORT_VERSION = NULL;
@@ -107,7 +123,28 @@ OrtStatus *SetSessionLogSeverityLevel(OrtSessionOptions *o, int level) {
 }
 
 OrtStatus *EnableProfiling(OrtSessionOptions *o, const char *profile_file_prefix) {
+#ifdef ORT_WRAPPER_WINDOWS
+  // On Windows, ONNX Runtime expects UTF-16 (wchar_t*) for ORTCHAR_T
+  // Convert UTF-8 input to UTF-16
+  if (!profile_file_prefix) {
+    return ort_api->EnableProfiling(o, NULL);
+  }
+  int wide_len = MultiByteToWideChar(CP_UTF8, 0, profile_file_prefix, -1, NULL, 0);
+  if (wide_len == 0) {
+    return ort_api->CreateStatus(ORT_FAIL, "Failed to calculate wide string length for profile prefix");
+  }
+  wchar_t *wide_prefix = (wchar_t*)malloc(wide_len * sizeof(wchar_t));
+  if (!wide_prefix) {
+    return ort_api->CreateStatus(ORT_FAIL, "Failed to allocate memory for profile prefix");
+  }
+  MultiByteToWideChar(CP_UTF8, 0, profile_file_prefix, -1, wide_prefix, wide_len);
+  // Cast to ORTCHAR_T* - on Windows with the real library, this is wchar_t*
+  OrtStatus *status = ort_api->EnableProfiling(o, (const ORTCHAR_T*)wide_prefix);
+  free(wide_prefix);
+  return status;
+#else
   return ort_api->EnableProfiling(o, profile_file_prefix);
+#endif
 }
 
 OrtStatus *DisableProfiling(OrtSessionOptions *o) {
